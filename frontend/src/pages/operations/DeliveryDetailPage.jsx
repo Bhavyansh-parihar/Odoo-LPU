@@ -8,7 +8,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { ConfirmModal } from '../../components/common/ConfirmModal';
 import { useToast } from '../../hooks/useToast';
-import { ArrowLeft, CheckCircle, User, Calendar, MapPin, BoxSelect, PackageCheck } from 'lucide-react';
+import { ArrowLeft, CheckCircle, User, Calendar, MapPin, BoxSelect, PackageCheck, Printer } from 'lucide-react';
 
 export const DeliveryDetailPage = () => {
   const { id } = useParams();
@@ -48,9 +48,14 @@ export const DeliveryDetailPage = () => {
     setIsConfirmOpen(false);
   };
 
+  const handlePrint = () => {
+    toast.info('Printing Delivery Slip', `Opening print preview for ${delivery.reference}...`);
+    window.print();
+  };
+
   return (
     <div className="space-y-6">
-      <Button variant="ghost" size="sm" icon={ArrowLeft} onClick={() => navigate('/operations/deliveries')}>
+      <Button variant="ghost" size="sm" icon={ArrowLeft} onClick={() => navigate('/operations/deliveries')} className="print:hidden">
         Back to Delivery Orders List
       </Button>
 
@@ -60,18 +65,22 @@ export const DeliveryDetailPage = () => {
       >
         <Badge>{delivery.status}</Badge>
 
+        <Button variant="outline" size="sm" icon={Printer} onClick={handlePrint} className="print:hidden">
+          Print Delivery Slip
+        </Button>
+
         {delivery.status === 'Draft' && (
-          <Button variant="outline" size="sm" icon={BoxSelect} onClick={handlePick}>
+          <Button variant="outline" size="sm" icon={BoxSelect} onClick={handlePick} className="print:hidden">
             Pick Items
           </Button>
         )}
         {delivery.status === 'Picked' && (
-          <Button variant="outline" size="sm" icon={PackageCheck} onClick={handlePack}>
+          <Button variant="outline" size="sm" icon={PackageCheck} onClick={handlePack} className="print:hidden">
             Pack Parcel
           </Button>
         )}
-        {delivery.status !== 'Done' && (
-          <Button variant="success" size="sm" icon={CheckCircle} onClick={() => setIsConfirmOpen(true)}>
+        {delivery.status !== 'Delivered' && (
+          <Button variant="success" size="sm" icon={CheckCircle} onClick={() => setIsConfirmOpen(true)} className="print:hidden">
             Validate & Dispatch
           </Button>
         )}

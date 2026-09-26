@@ -50,10 +50,13 @@ export const DashboardFilters = ({
           >
             <option value="ALL">All Statuses</option>
             <option value="Draft">Draft</option>
+            <option value="Dispatched">Dispatched</option>
             <option value="Ready">Ready</option>
+            <option value="Arrived">Arrived</option>
             <option value="Waiting">Waiting</option>
             <option value="Picked">Picked</option>
             <option value="Packed">Packed</option>
+            <option value="Delivered">Delivered</option>
             <option value="Done">Done / Applied</option>
           </select>
         </div>

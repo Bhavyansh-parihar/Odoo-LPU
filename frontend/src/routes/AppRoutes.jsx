@@ -28,6 +28,7 @@ import { AdjustmentsPage } from '../pages/operations/AdjustmentsPage';
 import { MoveHistoryPage } from '../pages/move-history/MoveHistoryPage';
 import { WarehouseSettingsPage } from '../pages/settings/WarehouseSettingsPage';
 import { ProfilePage } from '../pages/profile/ProfilePage';
+import { ProfileEditPage } from '../pages/profile/ProfileEditPage';
 
 export const AppRoutes = () => {
   return (
@@ -60,6 +61,7 @@ export const AppRoutes = () => {
         <Route path="/move-history" element={<MoveHistoryPage />} />
         <Route path="/settings/warehouse" element={<WarehouseSettingsPage />} />
         <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/profile/edit" element={<ProfileEditPage />} />
       </Route>
 
       {/* Fallback route */}

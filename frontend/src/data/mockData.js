@@ -195,7 +195,7 @@ export const initialReceipts = [
     date: '2026-09-24',
     supplier: 'TechSupply Global Co.',
     destinationLocation: 'WH/Input',
-    status: 'Ready', // 'Draft', 'Ready', 'Done', 'Cancelled'
+    status: 'Arrived', // 'Dispatched', 'Arrived', 'Done', 'Cancelled'
     notes: 'PO-88219 Batch shipment for tech accessories.',
     items: [
       { productId: 'prd-3', productName: 'UltraSharp 27" 4K IPS Monitor', qtyExpected: 20, qtyReceived: 0 },
@@ -208,7 +208,7 @@ export const initialReceipts = [
     date: '2026-09-22',
     supplier: 'Apex Packaging Industries',
     destinationLocation: 'WH/Input',
-    status: 'Draft',
+    status: 'Dispatched',
     notes: 'Urgent restocking for shipping boxes.',
     items: [
       { productId: 'prd-4', productName: 'Heavy-Duty Corrugated Shipping Box (Large)', qtyExpected: 500, qtyReceived: 0 }
@@ -260,7 +260,7 @@ export const initialDeliveries = [
     date: '2026-09-18',
     customer: 'CyberTech Logistics',
     sourceLocation: 'HUB/Stock',
-    status: 'Done',
+    status: 'Delivered',
     notes: 'Fulfilled and dispatched via Freight truck #44.',
     items: [
       { productId: 'prd-6', productName: 'USB-C Braided Cable 2m (100W)', qtyDemand: 50, qtyDone: 50 }
@@ -389,7 +389,7 @@ export const initialUserProfile = {
   email: 'alex.morgan@stocksense.io',
   role: 'Inventory Operations Manager',
   department: 'Supply Chain & Warehousing',
-  avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=250&q=80',
+  avatar: null,
   phone: '+1 (555) 234-5678',
   assignedWarehouse: 'WH-MAIN (Main Logistics Warehouse)',
   joinedDate: '2024-03-15'

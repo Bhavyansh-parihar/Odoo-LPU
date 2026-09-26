@@ -42,7 +42,7 @@ export const DashboardPage = () => {
   const totalProductsInStock = products.reduce((acc, p) => acc + (p.totalStock > 0 ? 1 : 0), 0);
   const lowStockItems = products.filter(p => p.totalStock > 0 && p.totalStock <= p.minStock).length;
   const outOfStockItems = products.filter(p => p.totalStock === 0).length;
-  const pendingReceipts = receipts.filter(r => r.status === 'Draft' || r.status === 'Ready').length;
+  const pendingReceipts = receipts.filter(r => r.status !== 'Done' && r.status !== 'Cancelled').length;
   const pendingDeliveries = deliveries.filter(d => d.status !== 'Done' && d.status !== 'Cancelled').length;
   const scheduledTransfers = transfers.filter(t => t.status === 'Draft' || t.status === 'Ready').length;
 

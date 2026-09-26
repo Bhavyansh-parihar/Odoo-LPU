@@ -8,7 +8,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { ConfirmModal } from '../../components/common/ConfirmModal';
 import { useToast } from '../../hooks/useToast';
-import { ArrowLeft, CheckCircle, Truck, Calendar, MapPin } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Truck, Calendar, MapPin, Printer } from 'lucide-react';
 
 export const ReceiptDetailPage = () => {
   const { id } = useParams();
@@ -37,9 +37,14 @@ export const ReceiptDetailPage = () => {
     setIsConfirmOpen(false);
   };
 
+  const handlePrint = () => {
+    toast.info('Printing Receipt', `Opening print preview for ${receipt.reference}...`);
+    window.print();
+  };
+
   return (
     <div className="space-y-6">
-      <Button variant="ghost" size="sm" icon={ArrowLeft} onClick={() => navigate('/operations/receipts')}>
+      <Button variant="ghost" size="sm" icon={ArrowLeft} onClick={() => navigate('/operations/receipts')} className="print:hidden">
         Back to Incoming Receipts List
       </Button>
 
@@ -48,8 +53,11 @@ export const ReceiptDetailPage = () => {
         description={`Supplier: ${receipt.supplier} | Destination: ${receipt.destinationLocation}`}
       >
         <Badge>{receipt.status}</Badge>
+        <Button variant="outline" size="sm" icon={Printer} onClick={handlePrint} className="print:hidden">
+          Print Receipt Slip
+        </Button>
         {receipt.status !== 'Done' && (
-          <Button variant="success" size="sm" icon={CheckCircle} onClick={() => setIsConfirmOpen(true)}>
+          <Button variant="success" size="sm" icon={CheckCircle} onClick={() => setIsConfirmOpen(true)} className="print:hidden">
             Validate Receipt
           </Button>
         )}
