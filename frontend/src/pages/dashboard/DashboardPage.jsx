@@ -56,7 +56,7 @@ export const DashboardPage = () => {
       contact: r.supplier,
       location: r.destinationLocation,
       status: r.status,
-      itemsCount: r.items.length,
+      itemsCount: (r.lines?.length || 0),
       category: 'Multiple / Supplies',
       rawObj: r,
       targetPath: `/operations/receipts/${r.id}`
@@ -69,7 +69,7 @@ export const DashboardPage = () => {
       contact: d.customer,
       location: d.sourceLocation,
       status: d.status,
-      itemsCount: d.items.length,
+      itemsCount: (d.lines?.length || 0),
       category: 'Outbound Sales',
       rawObj: d,
       targetPath: `/operations/deliveries/${d.id}`
@@ -82,7 +82,7 @@ export const DashboardPage = () => {
       contact: `${t.sourceLocation} → ${t.destinationLocation}`,
       location: t.sourceLocation,
       status: t.status,
-      itemsCount: t.items.length,
+      itemsCount: 1,
       category: 'Internal Move',
       rawObj: t,
       targetPath: `/operations/transfers`

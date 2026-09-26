@@ -14,9 +14,11 @@ import {
   Boxes,
   X
 } from 'lucide-react';
+import { useAuthStore } from '../../store/authStore';
 
 export const Sidebar = ({ isOpen = true, onClose }) => {
   const [isOpsOpen, setIsOpsOpen] = useState(true);
+  const { user } = useAuthStore();
 
   const mainNav = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
@@ -35,6 +37,10 @@ export const Sidebar = ({ isOpen = true, onClose }) => {
     { name: 'Warehouse Settings', path: '/settings/warehouse', icon: Warehouse },
     { name: 'My Profile', path: '/profile', icon: User }
   ];
+
+  if (user?.role === 'manager') {
+    secondaryNav.splice(2, 0, { name: 'User Management', path: '/settings/users', icon: User });
+  }
 
   if (!isOpen) return null;
 

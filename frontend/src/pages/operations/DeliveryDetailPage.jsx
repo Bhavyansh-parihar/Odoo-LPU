@@ -43,7 +43,7 @@ export const DeliveryDetailPage = () => {
   };
 
   const handleValidate = () => {
-    validateDelivery(delivery.id);
+    validateDelivery(delivery.id, delivery.lines?.map(l => ({ product: l.product?._id || l.product, pickedQty: l.orderedQty })));
     toast.success('Delivery Validated', `Stock deducted and order ${delivery.reference} dispatched.`);
     setIsConfirmOpen(false);
   };
@@ -139,9 +139,9 @@ export const DeliveryDetailPage = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {delivery.items.map((item, idx) => (
+              {delivery.lines?.map((item, idx) => (
                 <TableRow key={idx}>
-                  <TableCell className="font-semibold text-slate-900">{item.productName}</TableCell>
+                  <TableCell className="font-semibold text-slate-900">{item.product?.name || "Unknown Product"}</TableCell>
                   <TableCell className="font-medium text-slate-700">{item.qtyDemand}</TableCell>
                   <TableCell className="font-bold text-emerald-600">
                     {delivery.status === 'Done' ? item.qtyDemand : item.qtyDone}

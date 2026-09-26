@@ -10,7 +10,9 @@
     "dev:frontend": "npm --prefix frontend run dev",
     "build": "npm --prefix frontend run build",
     "start": "node src/server.js",
-    "test": "node run-api-tests.js"
+    "dev": "nodemon src/server.js",
+    "test": "node run-api-tests.js",
+    "postinstall": "prisma skills sync || exit 0"
   },
   "keywords": [],
   "author": "",
@@ -26,7 +28,9 @@
     "nodemailer": "^10.0.10"
   },
   "devDependencies": {
+    "@prisma/client": "^5.22.0",
     "concurrently": "^9.1.2",
-    "mongodb-memory-server": "^11.3.0"
+    "mongodb-memory-server": "^11.3.0",
+    "prisma": "^5.22.0"
   }
 }

@@ -24,9 +24,9 @@ export const useInventoryStore = create((set, get) => ({
         api.get('/products')
       ]);
       
-      const categories = catRes.data?.data?.map(c => ({ ...c, id: c._id })) || [];
-      const warehouses = whRes.data?.data?.map(w => ({ ...w, id: w._id })) || [];
-      const products = prodRes.data?.data?.map(p => ({ ...p, id: p._id })) || [];
+      const categories = catRes.data?.data?.categories?.map(c => ({ ...c, id: c._id })) || [];
+      const warehouses = whRes.data?.data?.warehouses?.map(w => ({ ...w, id: w._id, locations: (w.locations || []).map((l, i) => (typeof l === 'string' ? { id: `loc-${i}`, code: l, name: l, type: 'Internal' } : l)) })) || [];
+      const products = prodRes.data?.data?.products?.map(p => ({ ...p, id: p._id, category: p.category?.name || p.category, minStock: p.reorderPoint || 0, totalStock: 0 })) || [];
 
       set({ 
         categories, 
@@ -55,10 +55,10 @@ export const useInventoryStore = create((set, get) => ({
       const [recRes, delRes, trfRes, adjRes] = await Promise.all(endpoints);
 
       set({
-        receipts: recRes.data?.data?.map(r => ({ ...r, id: r._id })) || [],
-        deliveries: delRes.data?.data?.map(d => ({ ...d, id: d._id })) || [],
-        transfers: trfRes.data?.data?.map(t => ({ ...t, id: t._id })) || [],
-        adjustments: adjRes.data?.data?.map(a => ({ ...a, id: a._id })) || [],
+        receipts: recRes.data?.data?.receipts?.map(r => ({ ...r, id: r._id, reference: r.receiptNo, date: r.createdAt?.split('T')[0], supplier: r.supplierName, destinationLocation: r.warehouse?.code || 'WH-MAIN' })) || [],
+        deliveries: delRes.data?.data?.deliveryOrders?.map(d => ({ ...d, id: d._id, reference: d.deliveryNo, date: d.createdAt?.split('T')[0], customer: d.customerName, sourceLocation: d.warehouse?.code || 'WH-MAIN' })) || [],
+        transfers: trfRes.data?.data?.transfers?.map(t => ({ ...t, id: t._id, reference: t.transferNo, date: t.createdAt?.split('T')[0], sourceLocation: t.fromLocation || 'WH-MAIN', destinationLocation: t.toLocation || 'WH-MAIN' })) || [],
+        adjustments: adjRes.data?.data?.adjustments?.map(a => ({ ...a, id: a._id, reference: a._id.substring(a._id.length - 6).toUpperCase(), date: a.createdAt?.split('T')[0], location: a.location || 'WH-MAIN' })) || [],
       });
     } catch (e) {
       console.error('Failed to fetch operations:', e);
@@ -188,4 +188,6 @@ export const useInventoryStore = create((set, get) => ({
     }
   },
 
+  addMoveHistory: (moveData) => set((state) => ({ moveHistory: [{...moveData, id: Date.now().toString()}, ...state.moveHistory] })),
+  addLocationToWarehouse: (warehouseId, loc) => set((state) => ({ warehouses: state.warehouses.map(w => w.id === warehouseId ? { ...w, locations: [...(w.locations || []), loc] } : w) })),
 }));

@@ -51,8 +51,8 @@ export const DeliveriesPage = () => {
     return true;
   });
 
-  const handleCreateDelivery = (data) => {
-    const newDel = addDelivery(data);
+  const handleCreateDelivery = async (data) => {
+    const newDel = await addDelivery(data);
     toast.success('Delivery Created', `Outbound delivery order ${newDel.reference} created in Draft state.`);
   };
 
@@ -228,7 +228,7 @@ export const DeliveriesPage = () => {
 
                   {/* Products Summary Breakdown */}
                   <div className="space-y-1.5 pt-2 border-t border-slate-100">
-                    {d.items.map((item, idx) => (
+                    {d.lines?.map((item, idx) => (
                       <div key={idx} className="flex items-center justify-between text-xs">
                         <span className="font-medium text-slate-700">{item.productName}</span>
                         <span className="font-bold text-slate-900">{item.qtyDemand} units</span>
@@ -310,7 +310,7 @@ export const DeliveriesPage = () => {
                     <TableCell className="text-slate-500">{d.date}</TableCell>
                     <TableCell className="font-semibold text-slate-900">{d.customer}</TableCell>
                     <TableCell className="font-mono text-xs text-slate-600">{d.sourceLocation}</TableCell>
-                    <TableCell className="text-slate-700">{d.items.length} line item(s)</TableCell>
+                    <TableCell className="text-slate-700">{(d.lines?.length || 0)} line item(s)</TableCell>
                     <TableCell>
                       <Badge>{d.status}</Badge>
                     </TableCell>
@@ -380,7 +380,7 @@ export const DeliveriesPage = () => {
           onClose={() => setSelectedDeliveryToValidate(null)}
           onConfirm={handleConfirmValidate}
           title={`Validate & Dispatch Delivery ${selectedDeliveryToValidate.reference}`}
-          description={`Validating will deduct stock quantities permanently for ${selectedDeliveryToValidate.items.length} items.`}
+          description={`Validating will deduct stock quantities permanently for ${(selectedDeliveryToValidate.lines?.length || 0)} items.`}
           confirmText="Validate & Dispatch"
           variant="success"
         />

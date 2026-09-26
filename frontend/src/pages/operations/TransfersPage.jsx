@@ -49,8 +49,8 @@ export const TransfersPage = () => {
     return true;
   });
 
-  const handleCreateTransfer = (data) => {
-    const newTrf = addTransfer(data);
+  const handleCreateTransfer = async (data) => {
+    const newTrf = await addTransfer(data);
     toast.success('Transfer Scheduled', `Internal Transfer ${newTrf.reference} created.`);
   };
 
@@ -210,12 +210,12 @@ export const TransfersPage = () => {
 
                   {/* Line Items */}
                   <div className="space-y-1.5 pt-2 border-t border-slate-100">
-                    {t.items.map((item, idx) => (
-                      <div key={idx} className="flex items-center justify-between text-xs">
-                        <span className="font-medium text-slate-700">{item.productName}</span>
-                        <span className="font-bold text-slate-900">{item.qty} units</span>
+                    {
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-medium text-slate-700">{t.product?.name || "Unknown Product"}</span>
+                        <span className="font-bold text-slate-900">{t.quantity} units</span>
                       </div>
-                    ))}
+                    }
                   </div>
 
                   {/* Action Buttons Row */}
@@ -275,7 +275,7 @@ export const TransfersPage = () => {
                     <TableCell className="text-slate-500">{t.date}</TableCell>
                     <TableCell className="font-mono text-xs font-semibold text-slate-800">{t.sourceLocation}</TableCell>
                     <TableCell className="font-mono text-xs font-semibold text-indigo-600">{t.destinationLocation}</TableCell>
-                    <TableCell className="text-slate-700">{t.items.length} line item(s)</TableCell>
+                    <TableCell className="text-slate-700">1 line item</TableCell>
                     <TableCell>
                       <Badge>{t.status}</Badge>
                     </TableCell>
