@@ -1,147 +1,162 @@
-const mongoose = require('mongoose');
 const Receipt = require('../models/Receipt');
-const { generateDocNo } = require('../utils/helpers');
+const mongoose = require('mongoose');
 const { applyStockChange } = require('../services/stockService');
+const { successResponse, errorResponse } = require('../utils/apiResponse');
 
-// @route   GET /api/receipts
-exports.getAll = async (req, res) => {
+exports.getReceipts = async (req, res, next) => {
   try {
     const { status, warehouse, page = 1, limit = 20 } = req.query;
-    const filter = {};
-    if (status) filter.status = status;
-    if (warehouse) filter.warehouse = warehouse;
+    const query = {};
 
-    const skip = (page - 1) * limit;
-    const [receipts, total] = await Promise.all([
-      Receipt.find(filter)
-        .populate('warehouse', 'name code')
-        .populate('createdBy', 'name email')
-        .populate('lines.product', 'name sku unitOfMeasure')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(Number(limit)),
-      Receipt.countDocuments(filter)
-    ]);
+    if (status) query.status = status;
+    if (warehouse) query.warehouse = warehouse;
 
-    res.json({ receipts, total, page: Number(page), pages: Math.ceil(total / limit) });
+    const receipts = await Receipt.find(query)
+      .populate('warehouse', 'name code')
+      .populate('lines.product', 'name sku')
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit));
+
+    const total = await Receipt.countDocuments(query);
+
+    return successResponse(res, { receipts, total, page: parseInt(page), limit: parseInt(limit) }, 'Receipts fetched successfully');
   } catch (err) {
-    console.error(err.message);
-    res.status(500).json({ msg: 'Server error' });
+    next(err);
   }
 };
 
-// @route   GET /api/receipts/:id
-exports.getOne = async (req, res) => {
+exports.getReceipt = async (req, res, next) => {
   try {
     const receipt = await Receipt.findById(req.params.id)
       .populate('warehouse', 'name code')
-      .populate('createdBy', 'name email')
-      .populate('lines.product', 'name sku unitOfMeasure');
-    if (!receipt) return res.status(404).json({ msg: 'Receipt not found' });
-    res.json(receipt);
+      .populate('lines.product', 'name sku');
+    
+    if (!receipt) {
+      return errorResponse(res, 'Receipt not found', [], 404);
+    }
+    
+    return successResponse(res, receipt, 'Receipt fetched successfully');
   } catch (err) {
-    res.status(500).json({ msg: 'Server error' });
+    next(err);
   }
 };
 
-// @route   POST /api/receipts
-exports.create = async (req, res) => {
+exports.createReceipt = async (req, res, next) => {
   try {
     const { supplierName, warehouse, lines } = req.body;
-    if (!warehouse || !lines || lines.length === 0) {
-      return res.status(400).json({ msg: 'Warehouse and at least one line item are required' });
-    }
+    
+    const count = await Receipt.countDocuments();
+    const receiptNo = `REC-${(count + 1).toString().padStart(5, '0')}`;
 
-    const receiptNo = await generateDocNo(Receipt, 'receiptNo', 'REC');
     const receipt = new Receipt({
       receiptNo,
       supplierName,
       warehouse,
       lines,
-      createdBy: req.user.id,
-      status: 'draft'
+      status: 'draft',
+      createdBy: req.user._id
     });
 
     await receipt.save();
-    res.status(201).json(receipt);
+    return successResponse(res, receipt, 'Receipt created successfully', 201);
   } catch (err) {
-    console.error(err.message);
-    res.status(500).json({ msg: 'Server error' });
+    next(err);
   }
 };
 
-// @route   PUT /api/receipts/:id
-exports.update = async (req, res) => {
+exports.updateReceipt = async (req, res, next) => {
   try {
     const receipt = await Receipt.findById(req.params.id);
-    if (!receipt) return res.status(404).json({ msg: 'Receipt not found' });
-    if (['done', 'canceled'].includes(receipt.status)) {
-      return res.status(400).json({ msg: 'Cannot edit a completed or canceled receipt' });
+    if (!receipt) {
+      return errorResponse(res, 'Receipt not found', [], 404);
+    }
+    if (receipt.status !== 'draft') {
+      return errorResponse(res, 'Only draft receipts can be updated entirely', [], 400);
     }
 
-    const { supplierName, warehouse, lines, status } = req.body;
-    if (supplierName !== undefined) receipt.supplierName = supplierName;
-    if (warehouse) receipt.warehouse = warehouse;
-    if (lines) receipt.lines = lines;
-    if (status && status !== 'done') receipt.status = status;
-
-    await receipt.save();
-    res.json(receipt);
+    const updated = await Receipt.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    return successResponse(res, updated, 'Receipt updated successfully');
   } catch (err) {
-    res.status(500).json({ msg: 'Server error' });
+    next(err);
   }
 };
 
-// @route   POST /api/receipts/:id/validate
-// @desc    Validate receipt → set status to done, apply stock +
-exports.validate = async (req, res) => {
+exports.updateReceiptStatus = async (req, res, next) => {
   const session = await mongoose.startSession();
   session.startTransaction();
   try {
+    const { status, lines } = req.body;
     const receipt = await Receipt.findById(req.params.id).session(session);
-    if (!receipt) { await session.abortTransaction(); return res.status(404).json({ msg: 'Receipt not found' }); }
-    if (receipt.status === 'done') { await session.abortTransaction(); return res.status(400).json({ msg: 'Receipt already validated' }); }
-    if (receipt.status === 'canceled') { await session.abortTransaction(); return res.status(400).json({ msg: 'Receipt is canceled' }); }
 
-    // Apply stock changes for each line
-    for (const line of receipt.lines) {
-      const qty = line.receivedQty > 0 ? line.receivedQty : line.expectedQty;
-      await applyStockChange({
-        product: line.product,
-        warehouse: receipt.warehouse,
-        location: req.body.location || '',
-        change: qty,
-        sourceType: 'receipt',
-        sourceId: receipt._id
-      }, session);
+    if (!receipt) {
+      throw { statusCode: 404, message: 'Receipt not found' };
     }
 
-    receipt.status = 'done';
-    receipt.validatedAt = new Date();
-    await receipt.save({ session });
+    if (receipt.status === 'done') {
+      throw { statusCode: 400, message: 'Receipt is already done and cannot be modified' };
+    }
 
+    // Update lines if provided
+    if (lines) {
+      receipt.lines = receipt.lines.map(existingLine => {
+        const matchingLine = lines.find(l => l.product.toString() === existingLine.product.toString());
+        if (matchingLine) {
+          existingLine.receivedQty = matchingLine.receivedQty;
+        }
+        return existingLine;
+      });
+    }
+
+    receipt.status = status;
+
+    if (status === 'done') {
+      receipt.validatedAt = new Date();
+
+      // Ensure all lines have receivedQty before finalizing
+      for (const line of receipt.lines) {
+        if (line.receivedQty === undefined || line.receivedQty === null) {
+           throw { statusCode: 400, message: `receivedQty is required for product ${line.product} when marking as done` };
+        }
+      }
+
+      // Atomically apply stock change
+      for (const line of receipt.lines) {
+        await applyStockChange({
+          product: line.product,
+          warehouse: receipt.warehouse,
+          location: 'Default',
+          change: line.receivedQty,
+          sourceType: 'receipt',
+          sourceId: receipt._id
+        }, session);
+      }
+    }
+
+    await receipt.save({ session });
     await session.commitTransaction();
-    res.json(receipt);
+    session.endSession();
+
+    return successResponse(res, receipt, 'Receipt status updated');
   } catch (err) {
     await session.abortTransaction();
-    console.error(err.message);
-    res.status(500).json({ msg: err.message || 'Server error' });
-  } finally {
     session.endSession();
+    next(err);
   }
 };
 
-// @route   POST /api/receipts/:id/cancel
-exports.cancel = async (req, res) => {
+exports.deleteReceipt = async (req, res, next) => {
   try {
     const receipt = await Receipt.findById(req.params.id);
-    if (!receipt) return res.status(404).json({ msg: 'Receipt not found' });
-    if (receipt.status === 'done') return res.status(400).json({ msg: 'Cannot cancel a validated receipt' });
+    if (!receipt) {
+      return errorResponse(res, 'Receipt not found', [], 404);
+    }
+    if (receipt.status !== 'draft') {
+      return errorResponse(res, 'Only draft receipts can be deleted', [], 400);
+    }
 
-    receipt.status = 'canceled';
-    await receipt.save();
-    res.json(receipt);
+    await Receipt.findByIdAndDelete(req.params.id);
+    return successResponse(res, {}, 'Receipt deleted successfully');
   } catch (err) {
-    res.status(500).json({ msg: 'Server error' });
+    next(err);
   }
 };

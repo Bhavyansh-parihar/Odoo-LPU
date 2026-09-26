@@ -1,63 +1,51 @@
 const Warehouse = require('../models/Warehouse');
+const { successResponse, errorResponse } = require('../utils/apiResponse');
 
-// @route   GET /api/warehouses
-exports.getAll = async (req, res) => {
+exports.getWarehouses = async (req, res, next) => {
   try {
-    const warehouses = await Warehouse.find().sort({ name: 1 });
-    res.json(warehouses);
+    const warehouses = await Warehouse.find();
+    return successResponse(res, { warehouses }, 'Warehouses fetched successfully');
   } catch (err) {
-    res.status(500).json({ msg: 'Server error' });
+    next(err);
   }
 };
 
-// @route   GET /api/warehouses/:id
-exports.getOne = async (req, res) => {
-  try {
-    const warehouse = await Warehouse.findById(req.params.id);
-    if (!warehouse) return res.status(404).json({ msg: 'Warehouse not found' });
-    res.json(warehouse);
-  } catch (err) {
-    res.status(500).json({ msg: 'Server error' });
-  }
-};
-
-// @route   POST /api/warehouses
-exports.create = async (req, res) => {
+exports.createWarehouse = async (req, res, next) => {
   try {
     const { name, code, locations } = req.body;
-    if (!name || !code) return res.status(400).json({ msg: 'Name and code are required' });
+    
+    const existing = await Warehouse.findOne({ code });
+    if (existing) {
+      return errorResponse(res, 'Warehouse code already exists', [], 409);
+    }
 
-    const warehouse = new Warehouse({ name, code, locations: locations || [] });
-    await warehouse.save();
-    res.status(201).json(warehouse);
+    const warehouse = await Warehouse.create({ name, code, locations });
+    return successResponse(res, warehouse, 'Warehouse created successfully', 201);
   } catch (err) {
-    res.status(500).json({ msg: 'Server error' });
+    next(err);
   }
 };
 
-// @route   PUT /api/warehouses/:id
-exports.update = async (req, res) => {
+exports.updateWarehouse = async (req, res, next) => {
   try {
-    const { name, code, locations } = req.body;
-    const warehouse = await Warehouse.findByIdAndUpdate(
-      req.params.id,
-      { name, code, locations },
-      { new: true, runValidators: true }
-    );
-    if (!warehouse) return res.status(404).json({ msg: 'Warehouse not found' });
-    res.json(warehouse);
+    const warehouse = await Warehouse.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    if (!warehouse) {
+      return errorResponse(res, 'Warehouse not found', [], 404);
+    }
+    return successResponse(res, warehouse, 'Warehouse updated successfully');
   } catch (err) {
-    res.status(500).json({ msg: 'Server error' });
+    next(err);
   }
 };
 
-// @route   DELETE /api/warehouses/:id
-exports.remove = async (req, res) => {
+exports.deleteWarehouse = async (req, res, next) => {
   try {
     const warehouse = await Warehouse.findByIdAndDelete(req.params.id);
-    if (!warehouse) return res.status(404).json({ msg: 'Warehouse not found' });
-    res.json({ msg: 'Warehouse removed' });
+    if (!warehouse) {
+      return errorResponse(res, 'Warehouse not found', [], 404);
+    }
+    return successResponse(res, {}, 'Warehouse deleted successfully');
   } catch (err) {
-    res.status(500).json({ msg: 'Server error' });
+    next(err);
   }
 };

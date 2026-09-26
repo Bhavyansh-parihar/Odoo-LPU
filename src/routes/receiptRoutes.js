@@ -1,13 +1,17 @@
 const express = require('express');
 const router = express.Router();
-const ctrl = require('../controllers/receiptController');
-const auth = require('../middlewares/authMiddleware');
+const receiptController = require('../controllers/receiptController');
+const { protect, authorize } = require('../middlewares/authMiddleware');
 
-router.get('/', auth, ctrl.getAll);
-router.get('/:id', auth, ctrl.getOne);
-router.post('/', auth, ctrl.create);
-router.put('/:id', auth, ctrl.update);
-router.post('/:id/validate', auth, ctrl.validate);
-router.post('/:id/cancel', auth, ctrl.cancel);
+router.use(protect);
+
+router.get('/', receiptController.getReceipts);
+router.get('/:id', receiptController.getReceipt);
+
+// Managers and staff can create and validate receipts
+router.post('/', authorize('manager', 'staff'), receiptController.createReceipt);
+router.put('/:id', authorize('manager', 'staff'), receiptController.updateReceipt);
+router.patch('/:id/status', authorize('manager', 'staff'), receiptController.updateReceiptStatus);
+router.delete('/:id', authorize('manager', 'staff'), receiptController.deleteReceipt);
 
 module.exports = router;

@@ -1,87 +1,73 @@
-const mongoose = require('mongoose');
 const StockAdjustment = require('../models/StockAdjustment');
 const StockLevel = require('../models/StockLevel');
+const mongoose = require('mongoose');
 const { applyStockChange } = require('../services/stockService');
+const { successResponse, errorResponse } = require('../utils/apiResponse');
 
-// @route   GET /api/adjustments
-exports.getAll = async (req, res) => {
+exports.getAdjustments = async (req, res, next) => {
   try {
-    const { page = 1, limit = 20 } = req.query;
-    const skip = (page - 1) * limit;
+    const { warehouse, product, page = 1, limit = 20 } = req.query;
+    const query = {};
 
-    const [adjustments, total] = await Promise.all([
-      StockAdjustment.find()
-        .populate('product', 'name sku unitOfMeasure')
-        .populate('warehouse', 'name code')
-        .populate('createdBy', 'name email')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(Number(limit)),
-      StockAdjustment.countDocuments()
-    ]);
+    if (warehouse) query.warehouse = warehouse;
+    if (product) query.product = product;
 
-    res.json({ adjustments, total, page: Number(page), pages: Math.ceil(total / limit) });
+    const adjustments = await StockAdjustment.find(query)
+      .populate('warehouse', 'name code')
+      .populate('product', 'name sku')
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit))
+      .sort({ createdAt: -1 });
+
+    const total = await StockAdjustment.countDocuments(query);
+
+    return successResponse(res, { adjustments, total, page: parseInt(page), limit: parseInt(limit) }, 'Adjustments fetched successfully');
   } catch (err) {
-    res.status(500).json({ msg: 'Server error' });
+    next(err);
   }
 };
 
-// @route   POST /api/adjustments
-// @desc    Apply a stock count adjustment immediately
-exports.create = async (req, res) => {
+exports.createAdjustment = async (req, res, next) => {
   const session = await mongoose.startSession();
   session.startTransaction();
   try {
     const { product, warehouse, location, countedQty, reason } = req.body;
-    if (!product || !warehouse || countedQty === undefined) {
-      await session.abortTransaction();
-      return res.status(400).json({ msg: 'product, warehouse, and countedQty are required' });
-    }
-
-    // Get current system quantity
-    const stockLevel = await StockLevel.findOne({
-      product,
-      warehouse,
-      location: location || ''
-    }).session(session);
-
-    const systemQty = stockLevel ? stockLevel.quantity : 0;
+    
+    // Find current stock
+    const stock = await StockLevel.findOne({ product, warehouse, location }).session(session);
+    const systemQty = stock ? stock.quantity : 0;
+    
     const difference = countedQty - systemQty;
-
-    if (difference === 0) {
-      await session.abortTransaction();
-      return res.status(400).json({ msg: 'No difference detected; adjustment not needed' });
-    }
 
     const adjustment = new StockAdjustment({
       product,
       warehouse,
-      location: location || '',
+      location,
       systemQty,
       countedQty,
       difference,
       reason,
-      createdBy: req.user.id
+      createdBy: req.user._id
     });
+
     await adjustment.save({ session });
 
-    // Apply the difference to stock
     await applyStockChange({
       product,
       warehouse,
-      location: location || '',
+      location,
       change: difference,
       sourceType: 'adjustment',
       sourceId: adjustment._id
     }, session);
 
     await session.commitTransaction();
-    res.status(201).json(adjustment);
+    session.endSession();
+
+    return successResponse(res, adjustment, 'Adjustment created successfully', 201);
   } catch (err) {
     await session.abortTransaction();
-    console.error(err.message);
-    res.status(500).json({ msg: err.message || 'Server error' });
-  } finally {
     session.endSession();
+    next(err);
   }
 };
