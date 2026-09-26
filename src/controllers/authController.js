@@ -56,7 +56,7 @@ exports.login = async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    let user = await User.findOne({ email });
+    let user = await User.findOne({ email }).populate('assignedWarehouse', 'name code');
 
     if (!user) {
       return res.status(400).json({ msg: 'Invalid Credentials' });
@@ -81,7 +81,7 @@ exports.login = async (req, res) => {
       { expiresIn: 360000 },
       (err, token) => {
         if (err) throw err;
-        res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
+        res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role, assignedWarehouse: user.assignedWarehouse } });
       }
     );
   } catch (err) {
@@ -95,7 +95,7 @@ exports.login = async (req, res) => {
 // @access  Private
 exports.getMe = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select('-passwordHash -otp');
+    const user = await User.findById(req.user.id).select('-passwordHash -otp').populate('assignedWarehouse', 'name code');
     res.json(user);
   } catch (err) {
     console.error(err.message);

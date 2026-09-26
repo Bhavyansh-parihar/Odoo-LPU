@@ -32,14 +32,6 @@ async function seed() {
   ]);
   console.log('🗑️  Cleared existing data');
 
-  // ── Users ────────────────────────────────────────────────────────────────
-  const salt = await bcrypt.genSalt(10);
-  const [manager, staff] = await User.insertMany([
-    { name: 'Alex Morgan',   email: 'alex@stocksense.io',  passwordHash: await bcrypt.hash('password123', salt), role: 'manager' },
-    { name: 'Jordan Lee',    email: 'jordan@stocksense.io',passwordHash: await bcrypt.hash('password123', salt), role: 'staff'   }
-  ]);
-  console.log('👤 Users seeded');
-
   // ── Categories ───────────────────────────────────────────────────────────
   const [catElec, catOffice, catRaw, catPkg, catFG] = await Category.insertMany([
     { name: 'Electronics & Components',  description: 'Microcontrollers, sensors, cables & gadgets' },
@@ -69,6 +61,15 @@ async function seed() {
     }
   ]);
   console.log('🏭 Warehouses seeded');
+
+  // ── Users ────────────────────────────────────────────────────────────────
+  const salt = await bcrypt.genSalt(10);
+  const [manager, staffHub, staffNorth] = await User.insertMany([
+    { name: 'Alex Morgan',   email: 'alex@stocksense.io',  passwordHash: await bcrypt.hash('password123', salt), role: 'manager', assignedWarehouse: whMain._id },
+    { name: 'Jordan Lee',    email: 'jordan@stocksense.io',passwordHash: await bcrypt.hash('password123', salt), role: 'staff', assignedWarehouse: whHub._id },
+    { name: 'Taylor Swift',  email: 'taylor@stocksense.io',passwordHash: await bcrypt.hash('password123', salt), role: 'staff', assignedWarehouse: whNorth._id }
+  ]);
+  console.log('👤 Users seeded');
 
   // ── Products ─────────────────────────────────────────────────────────────
   const [pErgo, pKeyboard, pMonitor, pBox, pAlum, pCable] = await Product.insertMany([
@@ -144,7 +145,7 @@ async function seed() {
       supplierName: 'Apex Packaging Industries',
       warehouse:    whMain._id,
       status:       'draft',
-      createdBy:    staff._id,
+      createdBy:    staffHub._id,
       lines: [
         { product: pBox._id, expectedQty: 500, receivedQty: 0 }
       ]
@@ -178,7 +179,7 @@ async function seed() {
       supplierName: 'Consumer Electronics Ltd.',
       warehouse:    whNorth._id,
       status:       'waiting',
-      createdBy:    staff._id,
+      createdBy:    staffNorth._id,
       lines: [
         { product: pKeyboard._id, expectedQty: 30, receivedQty: 0 },
         { product: pCable._id,    expectedQty: 60, receivedQty: 0 }
@@ -205,7 +206,7 @@ async function seed() {
       customerName: 'Nexus Digital Labs',
       warehouse:    whMain._id,
       status:       'ready',
-      createdBy:    staff._id,
+      createdBy:    staffHub._id,
       lines: [
         { product: pMonitor._id, orderedQty: 2, pickedQty: 2 }
       ]
@@ -227,7 +228,7 @@ async function seed() {
       customerName: 'Downtown Corporate Office',
       warehouse:    whNorth._id,
       status:       'draft',
-      createdBy:    staff._id,
+      createdBy:    staffHub._id,
       lines: [
         { product: pErgo._id,     orderedQty: 2, pickedQty: 0 },
         { product: pKeyboard._id, orderedQty: 5, pickedQty: 0 }
@@ -263,7 +264,7 @@ async function seed() {
       fromWarehouse: whMain._id, fromLocation: 'WH/Stock',
       toWarehouse:   whNorth._id, toLocation:  'NORTH/Store',
       status:       'draft',
-      createdBy:    staff._id
+      createdBy:    staffHub._id
     }
   ]);
   console.log('🔄 Internal transfers seeded');
@@ -289,7 +290,7 @@ async function seed() {
       countedQty: 18,
       difference: 3,
       reason:     'Annual physical stock audit mismatch reconciliation',
-      createdBy:  staff._id,
+      createdBy:  staffHub._id,
       createdAt:  new Date('2026-09-26')
     }
   ]);
@@ -300,7 +301,10 @@ async function seed() {
   console.log('Warehouses : WH-MAIN | WH-HUB | WH-NORTH');
   console.log('Products   : 6');
   console.log('Categories : 5');
-  console.log('Users      : alex@stocksense.io / jordan@stocksense.io (password: password123)');
+  console.log('Users      : 3');
+  console.log('  - alex@stocksense.io   (WH-MAIN)  | password123');
+  console.log('  - jordan@stocksense.io (WH-HUB)   | password123');
+  console.log('  - taylor@stocksense.io (WH-NORTH) | password123');
   console.log('──────────────────────────────────');
 
   await mongoose.disconnect();

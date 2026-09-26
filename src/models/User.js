@@ -5,6 +5,7 @@ const UserSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   passwordHash: { type: String, required: true },
   role: { type: String, enum: ['manager', 'staff'], default: 'staff' },
+  assignedWarehouse: { type: mongoose.Schema.Types.ObjectId, ref: 'Warehouse' },
   otp: {
     code: String,
     expiresAt: Date
