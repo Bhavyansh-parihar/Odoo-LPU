@@ -97,7 +97,7 @@ export const useInventoryStore = create((set, get) => ({
       id: `rec-${Date.now()}`,
       reference: newRef,
       date: receiptData.date || new Date().toISOString().split('T')[0],
-      status: 'Draft',
+      status: 'Dispatched',
       items: receiptData.items.map(item => {
         const prod = get().products.find(p => p.id === item.productId);
         return {
@@ -206,7 +206,7 @@ export const useInventoryStore = create((set, get) => ({
 
   validateDelivery: (deliveryId) => {
     const delivery = get().deliveries.find(d => d.id === deliveryId);
-    if (!delivery || delivery.status === 'Done') return;
+    if (!delivery || delivery.status === 'Delivered') return;
 
     const updatedItems = delivery.items.map(item => ({
       ...item,
@@ -243,7 +243,7 @@ export const useInventoryStore = create((set, get) => ({
 
     set((state) => ({
       deliveries: state.deliveries.map(d =>
-        d.id === deliveryId ? { ...d, status: 'Done', items: updatedItems } : d
+        d.id === deliveryId ? { ...d, status: 'Delivered', items: updatedItems } : d
       )
     }));
   },
