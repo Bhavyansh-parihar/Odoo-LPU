@@ -1,5 +1,7 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
+const fs = require('fs');
 const connectDB = require('./config/db');
 require('dotenv').config();
 
@@ -14,9 +16,7 @@ connectDB();
 app.use(cors());
 app.use(express.json());
 
-app.get('/', (req, res) => res.send('StockSense API Running'));
-
-// Define Routes
+// Define API Routes
 const apiVersion = '/api/v1';
 app.use(`${apiVersion}/auth`, require('./routes/authRoutes'));
 app.use(`${apiVersion}/products`, require('./routes/productRoutes'));
@@ -29,6 +29,18 @@ app.use(`${apiVersion}/adjustments`, require('./routes/adjustmentRoutes'));
 app.use(`${apiVersion}/ledger`, require('./routes/ledgerRoutes'));
 app.use(`${apiVersion}/dashboard`, require('./routes/dashboardRoutes'));
 app.use(`${apiVersion}/profile`, require('./routes/profileRoutes'));
+
+// Serve Frontend Static Files if Built
+const frontendDist = path.join(__dirname, '../frontend/dist');
+if (fs.existsSync(frontendDist)) {
+  app.use(express.static(frontendDist));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api')) return next();
+    res.sendFile(path.join(frontendDist, 'index.html'));
+  });
+} else {
+  app.get('/', (req, res) => res.send('StockSense API Running'));
+}
 
 // Global Error Handler
 app.use(errorHandler);

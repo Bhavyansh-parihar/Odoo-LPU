@@ -1,12 +1,15 @@
 {
-  "name": "odoo-lpu-backend",
+  "name": "odoo-lpu",
   "version": "1.0.0",
-  "description": "StockSense Backend API",
+  "description": "StockSense Inventory Management System",
   "main": "src/server.js",
-  "type": "commonjs",
   "scripts": {
+    "dev": "npm --prefix frontend run dev",
+    "dev:all": "concurrently \"npm --prefix frontend run dev\" \"node start-test-server.js\"",
+    "dev:backend": "node start-test-server.js",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build",
     "start": "node src/server.js",
-    "dev": "nodemon src/server.js",
     "test": "node run-api-tests.js"
   },
   "keywords": [],
@@ -23,6 +26,7 @@
     "nodemailer": "^10.0.10"
   },
   "devDependencies": {
+    "concurrently": "^9.1.2",
     "mongodb-memory-server": "^11.3.0"
   }
 }
