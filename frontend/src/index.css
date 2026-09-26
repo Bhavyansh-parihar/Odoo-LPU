@@ -11,8 +11,56 @@
   }
 
   body {
-    @apply bg-slate-50 text-slate-900 antialiased font-sans min-h-screen selection:bg-indigo-500 selection:text-white;
+    @apply bg-slate-50 text-slate-900 antialiased font-sans min-h-screen selection:bg-indigo-500 selection:text-white transition-colors duration-200;
   }
+}
+
+/* Night Mode (Dark Theme) Global Overrides */
+html.dark body {
+  background-color: #0b0f19 !important;
+  color: #f8fafc !important;
+}
+
+html.dark .bg-white {
+  background-color: #111827 !important;
+  color: #f8fafc !important;
+  border-color: #1f2937 !important;
+}
+
+html.dark .bg-slate-50 {
+  background-color: #1f2937 !important;
+  color: #f1f5f9 !important;
+  border-color: #374151 !important;
+}
+
+html.dark .bg-slate-100 {
+  background-color: #374151 !important;
+  color: #f8fafc !important;
+}
+
+html.dark .text-slate-900,
+html.dark .text-slate-800,
+html.dark .text-slate-700 {
+  color: #f8fafc !important;
+}
+
+html.dark .text-slate-600,
+html.dark .text-slate-500 {
+  color: #9ca3af !important;
+}
+
+html.dark .border-slate-200,
+html.dark .border-slate-200\/80,
+html.dark .border-slate-100 {
+  border-color: #1f2937 !important;
+}
+
+html.dark input,
+html.dark select,
+html.dark textarea {
+  background-color: #1f2937 !important;
+  color: #f8fafc !important;
+  border-color: #374151 !important;
 }
 
 /* Custom scrollbars & ERP styling tweaks */
@@ -29,4 +77,11 @@
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
+}
+
+html.dark ::-webkit-scrollbar-thumb {
+  background: #374151;
+}
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: #4b5563;
 }
