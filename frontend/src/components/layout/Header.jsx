@@ -6,8 +6,7 @@ import { Warehouse, LogOut, User, Search, ChevronDown, Menu, Sun, Moon } from 'l
 
 export const Header = ({ onToggleSidebar }) => {
   const { user, logout } = useAuthStore();
-  const warehouses = useInventoryStore((state) => state.warehouses);
-  const [selectedWh, setSelectedWh] = useState('wh-1');
+  const { warehouses, activeWarehouseId, setActiveWarehouseId } = useInventoryStore();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     return localStorage.getItem('theme') === 'dark' || document.documentElement.classList.contains('dark');
@@ -66,8 +65,8 @@ export const Header = ({ onToggleSidebar }) => {
         <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
           <Warehouse className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
           <select
-            value={selectedWh}
-            onChange={(e) => setSelectedWh(e.target.value)}
+            value={activeWarehouseId}
+            onChange={(e) => setActiveWarehouseId(e.target.value)}
             className="bg-transparent text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-hidden cursor-pointer max-w-[120px] md:max-w-none truncate"
           >
             {warehouses.map((wh) => (

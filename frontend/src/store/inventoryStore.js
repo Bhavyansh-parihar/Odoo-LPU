@@ -1,422 +1,191 @@
 import { create } from 'zustand';
-import {
-  initialProducts,
-  initialCategories,
-  initialUnitsOfMeasure,
-  initialWarehouses,
-  initialReceipts,
-  initialDeliveries,
-  initialTransfers,
-  initialAdjustments,
-  initialMoveHistory
-} from '../data/mockData';
+import api from '../utils/api';
 
 export const useInventoryStore = create((set, get) => ({
-  products: initialProducts,
-  categories: initialCategories,
-  unitsOfMeasure: initialUnitsOfMeasure,
-  warehouses: initialWarehouses,
-  receipts: initialReceipts,
-  deliveries: initialDeliveries,
-  transfers: initialTransfers,
-  adjustments: initialAdjustments,
-  moveHistory: initialMoveHistory,
+  products: [],
+  categories: [],
+  unitsOfMeasure: [{ id: 'uom-1', name: 'Pieces' }, { id: 'uom-2', name: 'Boxes' }], // Defaulting to mock if missing from API
+  warehouses: [],
+  activeWarehouseId: null,
+  receipts: [],
+  deliveries: [],
+  transfers: [],
+  adjustments: [],
+  moveHistory: [], // Can be fetched from ledger endpoint
+
+  setActiveWarehouseId: (id) => set({ activeWarehouseId: id }),
+
+  // Initialization: fetch all primary data
+  fetchInitialData: async () => {
+    try {
+      const [catRes, whRes, prodRes] = await Promise.all([
+        api.get('/categories'),
+        api.get('/warehouses'),
+        api.get('/products')
+      ]);
+      
+      const categories = catRes.data?.data?.map(c => ({ ...c, id: c._id })) || [];
+      const warehouses = whRes.data?.data?.map(w => ({ ...w, id: w._id })) || [];
+      const products = prodRes.data?.data?.map(p => ({ ...p, id: p._id })) || [];
+
+      set({ 
+        categories, 
+        warehouses, 
+        products,
+        activeWarehouseId: warehouses.length > 0 ? warehouses[0].id : null
+      });
+
+      // After we have warehouses, we can fetch operations
+      get().fetchOperations();
+    } catch (e) {
+      console.error('Failed to fetch initial data:', e);
+    }
+  },
+
+  fetchOperations: async () => {
+    try {
+      // Assuming you have GET routes for these in your backend
+      // Using Promise.allSettled so if one is missing it doesn't break the rest
+      const endpoints = [
+        api.get('/receipts').catch(() => ({ data: { data: [] } })),
+        api.get('/delivery-orders').catch(() => ({ data: { data: [] } })),
+        api.get('/transfers').catch(() => ({ data: { data: [] } })),
+        api.get('/adjustments').catch(() => ({ data: { data: [] } })),
+      ];
+      const [recRes, delRes, trfRes, adjRes] = await Promise.all(endpoints);
+
+      set({
+        receipts: recRes.data?.data?.map(r => ({ ...r, id: r._id })) || [],
+        deliveries: delRes.data?.data?.map(d => ({ ...d, id: d._id })) || [],
+        transfers: trfRes.data?.data?.map(t => ({ ...t, id: t._id })) || [],
+        adjustments: adjRes.data?.data?.map(a => ({ ...a, id: a._id })) || [],
+      });
+    } catch (e) {
+      console.error('Failed to fetch operations:', e);
+    }
+  },
 
   // Products CRUD
-  addProduct: (productData) => {
-    const newProduct = {
-      id: `prd-${Date.now()}`,
-      totalStock: Number(productData.initialStock) || 0,
-      minStock: Number(productData.minStock) || 10,
-      reorderQty: Number(productData.reorderQty) || 20,
-      costPrice: Number(productData.costPrice) || 0,
-      salePrice: Number(productData.salePrice) || 0,
-      description: productData.description || '',
-      reorderRules: {
-        minQty: Number(productData.minStock) || 10,
-        maxQty: (Number(productData.minStock) || 10) + (Number(productData.reorderQty) || 20),
-        autoTrigger: true
-      },
-      stockByLocation: [
-        { locationId: 'loc-1', locationCode: 'WH/Stock', qty: Number(productData.initialStock) || 0 }
-      ],
-      ...productData
-    };
-
-    set((state) => ({
-      products: [newProduct, ...state.products]
-    }));
-
-    // Record initial stock move if initial stock > 0
-    if (newProduct.totalStock > 0) {
-      get().addMoveHistory({
-        reference: `INIT/${newProduct.sku}`,
-        date: new Date().toISOString().slice(0, 16).replace('T', ' '),
-        contact: 'System Initialization',
-        source: 'Inventory Setup',
-        destination: 'WH/Stock',
-        product: newProduct.name,
-        quantity: newProduct.totalStock,
-        status: 'Done'
-      });
+  addProduct: async (productData) => {
+    try {
+      const res = await api.post('/products', productData);
+      const newProduct = { ...res.data.data, id: res.data.data._id };
+      set((state) => ({ products: [newProduct, ...state.products] }));
+      return newProduct;
+    } catch (error) {
+      console.error('Add product failed:', error);
+      throw error;
     }
-
-    return newProduct;
   },
 
-  updateProduct: (id, updatedData) => {
-    set((state) => ({
-      products: state.products.map((p) =>
-        p.id === id ? { ...p, ...updatedData } : p
-      )
-    }));
+  updateProduct: async (id, updatedData) => {
+    try {
+      const res = await api.patch(`/products/${id}`, updatedData);
+      set((state) => ({
+        products: state.products.map((p) => p.id === id ? { ...p, ...res.data.data, id: res.data.data._id } : p)
+      }));
+    } catch (error) {
+      console.error('Update product failed:', error);
+    }
   },
 
-  updateReorderRules: (productId, rules) => {
-    set((state) => ({
-      products: state.products.map((p) =>
-        p.id === productId ? { ...p, reorderRules: { ...p.reorderRules, ...rules } } : p
-      )
-    }));
-  },
-
-  addCategory: (categoryData) => {
-    const newCategory = {
-      id: `cat-${Date.now()}`,
-      ...categoryData
-    };
-    set((state) => ({
-      categories: [...state.categories, newCategory]
-    }));
+  addCategory: async (categoryData) => {
+    try {
+      const res = await api.post('/categories', categoryData);
+      const newCat = { ...res.data.data, id: res.data.data._id };
+      set((state) => ({ categories: [...state.categories, newCat] }));
+    } catch (error) {
+      console.error('Add category failed', error);
+    }
   },
 
   // Receipts
-  addReceipt: (receiptData) => {
-    const newRef = `WH/IN/${String(get().receipts.length + 1).padStart(5, '0')}`;
-    const newReceipt = {
-      id: `rec-${Date.now()}`,
-      reference: newRef,
-      date: receiptData.date || new Date().toISOString().split('T')[0],
-      status: 'Dispatched',
-      items: receiptData.items.map(item => {
-        const prod = get().products.find(p => p.id === item.productId);
-        return {
-          productId: item.productId,
-          productName: prod ? prod.name : 'Unknown Product',
-          qtyExpected: Number(item.qtyExpected),
-          qtyReceived: 0
-        };
-      }),
-      ...receiptData
-    };
-
-    set((state) => ({
-      receipts: [newReceipt, ...state.receipts]
-    }));
-    return newReceipt;
+  addReceipt: async (receiptData) => {
+    try {
+      const res = await api.post('/receipts', receiptData);
+      const newRec = { ...res.data.data, id: res.data.data._id };
+      set((state) => ({ receipts: [newRec, ...state.receipts] }));
+      return newRec;
+    } catch (error) {
+      console.error('Add receipt failed', error);
+      throw error;
+    }
   },
 
-  validateReceipt: (receiptId) => {
-    const receipt = get().receipts.find(r => r.id === receiptId);
-    if (!receipt || receipt.status === 'Done') return;
-
-    // Mark items received and update stock
-    const updatedItems = receipt.items.map(item => ({
-      ...item,
-      qtyReceived: item.qtyExpected
-    }));
-
-    // Update product stock levels
-    receipt.items.forEach(item => {
-      const product = get().products.find(p => p.id === item.productId);
-      if (product) {
-        const newTotalStock = product.totalStock + item.qtyExpected;
-        const updatedStockByLoc = product.stockByLocation.map(loc => 
-          loc.locationCode === receipt.destinationLocation
-            ? { ...loc, qty: loc.qty + item.qtyExpected }
-            : loc
-        );
-
-        // If location was not found in stockByLocation, append it
-        if (!updatedStockByLoc.some(loc => loc.locationCode === receipt.destinationLocation)) {
-          updatedStockByLoc.push({
-            locationId: `loc-dest-${Date.now()}`,
-            locationCode: receipt.destinationLocation,
-            qty: item.qtyExpected
-          });
-        }
-
-        get().updateProduct(product.id, {
-          totalStock: newTotalStock,
-          stockByLocation: updatedStockByLoc
-        });
-
-        // Add to move history
-        get().addMoveHistory({
-          reference: receipt.reference,
-          date: new Date().toISOString().slice(0, 16).replace('T', ' '),
-          contact: receipt.supplier,
-          source: 'Vendor/' + receipt.supplier,
-          destination: receipt.destinationLocation,
-          product: product.name,
-          quantity: item.qtyExpected,
-          status: 'Done'
-        });
-      }
-    });
-
-    set((state) => ({
-      receipts: state.receipts.map(r => 
-        r.id === receiptId ? { ...r, status: 'Done', items: updatedItems } : r
-      )
-    }));
+  validateReceipt: async (receiptId, lines) => {
+    try {
+      const res = await api.patch(`/receipts/${receiptId}/status`, { status: 'done', lines });
+      set((state) => ({
+        receipts: state.receipts.map(r => r.id === receiptId ? { ...r, ...res.data.data, status: 'done', id: res.data.data._id } : r)
+      }));
+      // Refresh products to get updated stock
+      get().fetchInitialData(); 
+    } catch (error) {
+      console.error('Validate receipt failed', error);
+    }
   },
 
   // Deliveries
-  addDelivery: (deliveryData) => {
-    const newRef = `WH/OUT/${String(get().deliveries.length + 1).padStart(5, '0')}`;
-    const newDelivery = {
-      id: `del-${Date.now()}`,
-      reference: newRef,
-      date: deliveryData.date || new Date().toISOString().split('T')[0],
-      status: 'Draft',
-      items: deliveryData.items.map(item => {
-        const prod = get().products.find(p => p.id === item.productId);
-        return {
-          productId: item.productId,
-          productName: prod ? prod.name : 'Unknown Product',
-          qtyDemand: Number(item.qtyDemand),
-          qtyDone: 0
-        };
-      }),
-      ...deliveryData
-    };
-
-    set((state) => ({
-      deliveries: [newDelivery, ...state.deliveries]
-    }));
-    return newDelivery;
-  },
-
-  updateDeliveryStatus: (deliveryId, status) => {
-    set((state) => ({
-      deliveries: state.deliveries.map(d => d.id === deliveryId ? { ...d, status } : d)
-    }));
-  },
-
-  validateDelivery: (deliveryId) => {
-    const delivery = get().deliveries.find(d => d.id === deliveryId);
-    if (!delivery || delivery.status === 'Delivered') return;
-
-    const updatedItems = delivery.items.map(item => ({
-      ...item,
-      qtyDone: item.qtyDemand
-    }));
-
-    delivery.items.forEach(item => {
-      const product = get().products.find(p => p.id === item.productId);
-      if (product) {
-        const newTotalStock = Math.max(0, product.totalStock - item.qtyDemand);
-        const updatedStockByLoc = product.stockByLocation.map(loc =>
-          loc.locationCode === delivery.sourceLocation
-            ? { ...loc, qty: Math.max(0, loc.qty - item.qtyDemand) }
-            : loc
-        );
-
-        get().updateProduct(product.id, {
-          totalStock: newTotalStock,
-          stockByLocation: updatedStockByLoc
-        });
-
-        get().addMoveHistory({
-          reference: delivery.reference,
-          date: new Date().toISOString().slice(0, 16).replace('T', ' '),
-          contact: delivery.customer,
-          source: delivery.sourceLocation,
-          destination: 'Customer/' + delivery.customer,
-          product: product.name,
-          quantity: item.qtyDemand,
-          status: 'Done'
-        });
-      }
-    });
-
-    set((state) => ({
-      deliveries: state.deliveries.map(d =>
-        d.id === deliveryId ? { ...d, status: 'Delivered', items: updatedItems } : d
-      )
-    }));
-  },
-
-  // Internal Transfers
-  addTransfer: (transferData) => {
-    const newRef = `WH/INT/${String(get().transfers.length + 1).padStart(5, '0')}`;
-    const newTransfer = {
-      id: `trf-${Date.now()}`,
-      reference: newRef,
-      date: transferData.date || new Date().toISOString().split('T')[0],
-      status: 'Ready',
-      items: transferData.items.map(item => {
-        const prod = get().products.find(p => p.id === item.productId);
-        return {
-          productId: item.productId,
-          productName: prod ? prod.name : 'Unknown Product',
-          qty: Number(item.qty)
-        };
-      }),
-      ...transferData
-    };
-
-    set((state) => ({
-      transfers: [newTransfer, ...state.transfers]
-    }));
-    return newTransfer;
-  },
-
-  validateTransfer: (transferId) => {
-    const transfer = get().transfers.find(t => t.id === transferId);
-    if (!transfer || transfer.status === 'Done') return;
-
-    transfer.items.forEach(item => {
-      const product = get().products.find(p => p.id === item.productId);
-      if (product) {
-        const updatedStockByLoc = product.stockByLocation.map(loc => {
-          if (loc.locationCode === transfer.sourceLocation) {
-            return { ...loc, qty: Math.max(0, loc.qty - item.qty) };
-          }
-          if (loc.locationCode === transfer.destinationLocation) {
-            return { ...loc, qty: loc.qty + item.qty };
-          }
-          return loc;
-        });
-
-        if (!updatedStockByLoc.some(loc => loc.locationCode === transfer.destinationLocation)) {
-          updatedStockByLoc.push({
-            locationId: `loc-dest-${Date.now()}`,
-            locationCode: transfer.destinationLocation,
-            qty: item.qty
-          });
-        }
-
-        get().updateProduct(product.id, {
-          stockByLocation: updatedStockByLoc
-        });
-
-        get().addMoveHistory({
-          reference: transfer.reference,
-          date: new Date().toISOString().slice(0, 16).replace('T', ' '),
-          contact: 'Internal Stock Transfer',
-          source: transfer.sourceLocation,
-          destination: transfer.destinationLocation,
-          product: product.name,
-          quantity: item.qty,
-          status: 'Done'
-        });
-      }
-    });
-
-    set((state) => ({
-      transfers: state.transfers.map(t =>
-        t.id === transferId ? { ...t, status: 'Done' } : t
-      )
-    }));
-  },
-
-  // Inventory Adjustments
-  addAdjustment: (adjData) => {
-    const newRef = `WH/ADJ/${String(get().adjustments.length + 1).padStart(5, '0')}`;
-    const product = get().products.find(p => p.id === adjData.productId);
-    const recordedQty = Number(adjData.recordedQty);
-    const countedQty = Number(adjData.countedQty);
-    const adjustmentQty = countedQty - recordedQty;
-
-    const newAdj = {
-      id: `adj-${Date.now()}`,
-      reference: newRef,
-      date: new Date().toISOString().split('T')[0],
-      location: adjData.location,
-      productId: adjData.productId,
-      productName: product ? product.name : 'Unknown Product',
-      recordedQty,
-      countedQty,
-      adjustmentQty,
-      reason: adjData.reason,
-      status: 'Draft'
-    };
-
-    set((state) => ({
-      adjustments: [newAdj, ...state.adjustments]
-    }));
-    return newAdj;
-  },
-
-  applyAdjustment: (adjId) => {
-    const adj = get().adjustments.find(a => a.id === adjId);
-    if (!adj || adj.status === 'Applied') return;
-
-    const product = get().products.find(p => p.id === adj.productId);
-    if (product) {
-      const newTotalStock = Math.max(0, product.totalStock + adj.adjustmentQty);
-      const updatedStockByLoc = product.stockByLocation.map(loc =>
-        loc.locationCode === adj.location
-          ? { ...loc, qty: Math.max(0, loc.qty + adj.adjustmentQty) }
-          : loc
-      );
-
-      get().updateProduct(product.id, {
-        totalStock: newTotalStock,
-        stockByLocation: updatedStockByLoc
-      });
-
-      get().addMoveHistory({
-        reference: adj.reference,
-        date: new Date().toISOString().slice(0, 16).replace('T', ' '),
-        contact: 'Inventory Auditor',
-        source: adj.adjustmentQty >= 0 ? 'Adjustment Addition' : adj.location,
-        destination: adj.adjustmentQty >= 0 ? adj.location : 'Inventory Shrinkage/Loss',
-        product: product.name,
-        quantity: adj.adjustmentQty,
-        status: 'Done'
-      });
+  addDelivery: async (deliveryData) => {
+    try {
+      const res = await api.post('/delivery-orders', deliveryData);
+      const newDel = { ...res.data.data, id: res.data.data._id };
+      set((state) => ({ deliveries: [newDel, ...state.deliveries] }));
+      return newDel;
+    } catch (error) {
+      console.error('Add delivery failed', error);
+      throw error;
     }
-
-    set((state) => ({
-      adjustments: state.adjustments.map(a =>
-        a.id === adjId ? { ...a, status: 'Applied' } : a
-      )
-    }));
   },
 
-  // Move History
-  addMoveHistory: (moveRecord) => {
-    const newMove = {
-      id: `mov-${Date.now()}`,
-      ...moveRecord
-    };
-    set((state) => ({
-      moveHistory: [newMove, ...state.moveHistory]
-    }));
+  validateDelivery: async (deliveryId, lines) => {
+    try {
+      const res = await api.patch(`/delivery-orders/${deliveryId}/status`, { status: 'done', lines });
+      set((state) => ({
+        deliveries: state.deliveries.map(d => d.id === deliveryId ? { ...d, ...res.data.data, status: 'Delivered', id: res.data.data._id } : d)
+      }));
+      get().fetchInitialData();
+    } catch (error) {
+      console.error('Validate delivery failed', error);
+    }
   },
 
-  // Warehouse management
-  updateWarehouse: (whId, whData) => {
-    set((state) => ({
-      warehouses: state.warehouses.map(w => w.id === whId ? { ...w, ...whData } : w)
-    }));
+  // Transfers
+  addTransfer: async (transferData) => {
+    try {
+      const res = await api.post('/transfers', transferData);
+      const newTrf = { ...res.data.data, id: res.data.data._id };
+      set((state) => ({ transfers: [newTrf, ...state.transfers] }));
+      return newTrf;
+    } catch (error) {
+      console.error('Add transfer failed', error);
+      throw error;
+    }
   },
 
-  addLocationToWarehouse: (whId, locationData) => {
-    set((state) => ({
-      warehouses: state.warehouses.map(w => {
-        if (w.id === whId) {
-          const newLoc = {
-            id: `loc-${Date.now()}`,
-            ...locationData
-          };
-          return { ...w, locations: [...w.locations, newLoc] };
-        }
-        return w;
-      })
-    }));
-  }
+  validateTransfer: async (transferId) => {
+    try {
+      const res = await api.patch(`/transfers/${transferId}/status`, { status: 'done' });
+      set((state) => ({
+        transfers: state.transfers.map(t => t.id === transferId ? { ...t, status: 'Done' } : t)
+      }));
+      get().fetchInitialData();
+    } catch (error) {
+      console.error('Validate transfer failed', error);
+    }
+  },
+
+  // Adjustments
+  addAdjustment: async (adjData) => {
+    try {
+      const res = await api.post('/adjustments', adjData);
+      const newAdj = { ...res.data.data, id: res.data.data._id };
+      set((state) => ({ adjustments: [newAdj, ...state.adjustments] }));
+      return newAdj;
+    } catch (error) {
+      console.error('Add adjustment failed', error);
+      throw error;
+    }
+  },
+
 }));

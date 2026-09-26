@@ -1,34 +1,39 @@
 import { create } from 'zustand';
 import { initialUserProfile } from '../data/mockData';
+import api from '../utils/api';
 
 export const useAuthStore = create((set) => ({
-  user: JSON.parse(localStorage.getItem('stocksense_user')) || initialUserProfile,
-  isAuthenticated: localStorage.getItem('stocksense_is_auth') === 'true' || true, // default true for immediate demo access
+  user: JSON.parse(localStorage.getItem('stocksense_user')) || null,
+  isAuthenticated: localStorage.getItem('stocksense_is_auth') === 'true',
   
   login: async (email, password) => {
-    // Mock login logic
-    const mockUser = {
-      ...initialUserProfile,
-      email: email || initialUserProfile.email
-    };
-    localStorage.setItem('stocksense_is_auth', 'true');
-    localStorage.setItem('stocksense_user', JSON.stringify(mockUser));
-    localStorage.setItem('stocksense_auth_token', 'mock_jwt_token_stocksense_2026');
-    set({ user: mockUser, isAuthenticated: true });
-    return { success: true, user: mockUser };
+    try {
+      const res = await api.post('/auth/login', { email, password });
+      const { user, accessToken } = res.data.data;
+      localStorage.setItem('stocksense_is_auth', 'true');
+      localStorage.setItem('stocksense_user', JSON.stringify(user));
+      localStorage.setItem('stocksense_auth_token', accessToken);
+      set({ user, isAuthenticated: true });
+      return { success: true, user };
+    } catch (error) {
+      console.error('Login Error:', error);
+      return { success: false, error: error.response?.data?.message || 'Login failed' };
+    }
   },
 
-  signup: async (fullName, email) => {
-    const mockUser = {
-      ...initialUserProfile,
-      name: fullName,
-      email: email
-    };
-    localStorage.setItem('stocksense_is_auth', 'true');
-    localStorage.setItem('stocksense_user', JSON.stringify(mockUser));
-    localStorage.setItem('stocksense_auth_token', 'mock_jwt_token_stocksense_2026');
-    set({ user: mockUser, isAuthenticated: true });
-    return { success: true, user: mockUser };
+  signup: async (fullName, email, password = 'password123', role = 'manager') => {
+    try {
+      const res = await api.post('/auth/signup', { name: fullName, email, password, role });
+      const { user, accessToken } = res.data.data;
+      localStorage.setItem('stocksense_is_auth', 'true');
+      localStorage.setItem('stocksense_user', JSON.stringify(user));
+      localStorage.setItem('stocksense_auth_token', accessToken);
+      set({ user, isAuthenticated: true });
+      return { success: true, user };
+    } catch (error) {
+      console.error('Signup Error:', error);
+      return { success: false, error: error.response?.data?.message || 'Signup failed' };
+    }
   },
 
   logout: () => {
