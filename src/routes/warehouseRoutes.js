@@ -1,12 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const ctrl = require('../controllers/warehouseController');
-const auth = require('../middlewares/authMiddleware');
+const warehouseController = require('../controllers/warehouseController');
+const { protect, authorize } = require('../middlewares/authMiddleware');
 
-router.get('/', auth, ctrl.getAll);
-router.get('/:id', auth, ctrl.getOne);
-router.post('/', auth, ctrl.create);
-router.put('/:id', auth, ctrl.update);
-router.delete('/:id', auth, ctrl.remove);
+router.use(protect);
+
+router.get('/', warehouseController.getWarehouses);
+router.post('/', authorize('manager'), warehouseController.createWarehouse);
+router.put('/:id', authorize('manager'), warehouseController.updateWarehouse);
+router.delete('/:id', authorize('manager'), warehouseController.deleteWarehouse);
 
 module.exports = router;

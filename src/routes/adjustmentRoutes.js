@@ -1,9 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const ctrl = require('../controllers/adjustmentController');
-const auth = require('../middlewares/authMiddleware');
+const adjustmentController = require('../controllers/adjustmentController');
+const { protect, authorize } = require('../middlewares/authMiddleware');
 
-router.get('/', auth, ctrl.getAll);
-router.post('/', auth, ctrl.create);
+router.use(protect);
+
+router.get('/', adjustmentController.getAdjustments);
+router.post('/', authorize('manager', 'staff'), adjustmentController.createAdjustment);
 
 module.exports = router;

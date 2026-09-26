@@ -1,137 +1,141 @@
 const Product = require('../models/Product');
 const Category = require('../models/Category');
 const StockLevel = require('../models/StockLevel');
-const { generateSKU } = require('../utils/helpers');
+const { applyStockChange } = require('../services/stockService');
+const { successResponse, errorResponse } = require('../utils/apiResponse');
+const mongoose = require('mongoose');
 
-// @route   GET /api/products
-exports.getAll = async (req, res) => {
+exports.getProducts = async (req, res, next) => {
   try {
-    const { search, category, isActive, page = 1, limit = 20 } = req.query;
-    const filter = {};
-    if (search) filter.name = { $regex: search, $options: 'i' };
-    if (category) filter.category = category;
-    if (isActive !== undefined) filter.isActive = isActive === 'true';
+    const { search, category, page = 1, limit = 20 } = req.query;
+    const query = { isActive: true };
 
-    const skip = (page - 1) * limit;
-    const [products, total] = await Promise.all([
-      Product.find(filter)
-        .populate('category', 'name')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(Number(limit)),
-      Product.countDocuments(filter)
-    ]);
-
-    res.json({ products, total, page: Number(page), pages: Math.ceil(total / limit) });
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).json({ msg: 'Server error' });
-  }
-};
-
-// @route   GET /api/products/:id
-exports.getOne = async (req, res) => {
-  try {
-    const product = await Product.findById(req.params.id).populate('category', 'name');
-    if (!product) return res.status(404).json({ msg: 'Product not found' });
-
-    // Also grab current stock levels across all warehouses
-    const stockLevels = await StockLevel.find({ product: product._id })
-      .populate('warehouse', 'name code');
-
-    res.json({ product, stockLevels });
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).json({ msg: 'Server error' });
-  }
-};
-
-// @route   POST /api/products
-exports.create = async (req, res) => {
-  try {
-    const { name, sku, category, unitOfMeasure, reorderPoint, reorderQty } = req.body;
-    if (!name || !unitOfMeasure) {
-      return res.status(400).json({ msg: 'Name and unitOfMeasure are required' });
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { sku: { $regex: search, $options: 'i' } }
+      ];
+    }
+    if (category) {
+      query.category = category;
     }
 
-    // Auto-generate SKU if not provided
-    let finalSKU = sku;
-    if (!finalSKU) {
-      const cat = category ? await Category.findById(category) : null;
-      finalSKU = await generateSKU(cat ? cat.name : 'GEN');
+    const products = await Product.find(query)
+      .populate('category', 'name description')
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit));
+
+    const total = await Product.countDocuments(query);
+
+    return successResponse(res, { products, total, page: parseInt(page), limit: parseInt(limit) }, 'Products fetched successfully');
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.getProduct = async (req, res, next) => {
+  try {
+    const product = await Product.findById(req.params.id).populate('category', 'name description');
+    if (!product || !product.isActive) {
+      return errorResponse(res, 'Product not found', [], 404);
+    }
+    return successResponse(res, product, 'Product fetched successfully');
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.createProduct = async (req, res, next) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
+    const { name, sku, category, unitOfMeasure, reorderPoint, reorderQty, initialStock, warehouse } = req.body;
+
+    const catExists = await Category.findById(category).session(session);
+    if (!catExists) {
+      throw { statusCode: 404, message: 'Category not found' };
+    }
+
+    let finalSku = sku;
+    if (!finalSku) {
+      const count = await Product.countDocuments().session(session);
+      const prefix = catExists.name.substring(0, 3).toUpperCase();
+      finalSku = `${prefix}-${(count + 1).toString().padStart(4, '0')}`;
+    }
+
+    const existingProduct = await Product.findOne({ sku: finalSku }).session(session);
+    if (existingProduct) {
+      throw { statusCode: 409, message: 'Product with this SKU already exists' };
     }
 
     const product = new Product({
       name,
-      sku: finalSKU,
-      category: category || null,
+      sku: finalSku,
+      category,
       unitOfMeasure,
-      reorderPoint: reorderPoint || 0,
-      reorderQty: reorderQty || 0
+      reorderPoint,
+      reorderQty
     });
 
-    await product.save();
-    res.status(201).json(product);
-  } catch (err) {
-    if (err.code === 11000) return res.status(400).json({ msg: 'SKU already exists' });
-    console.error(err.message);
-    res.status(500).json({ msg: 'Server error' });
-  }
-};
+    await product.save({ session });
 
-// @route   PUT /api/products/:id
-exports.update = async (req, res) => {
-  try {
-    const { name, sku, category, unitOfMeasure, reorderPoint, reorderQty, isActive } = req.body;
-    const product = await Product.findByIdAndUpdate(
-      req.params.id,
-      { name, sku, category, unitOfMeasure, reorderPoint, reorderQty, isActive },
-      { new: true, runValidators: true }
-    ).populate('category', 'name');
-
-    if (!product) return res.status(404).json({ msg: 'Product not found' });
-    res.json(product);
-  } catch (err) {
-    if (err.code === 11000) return res.status(400).json({ msg: 'SKU already exists' });
-    console.error(err.message);
-    res.status(500).json({ msg: 'Server error' });
-  }
-};
-
-// @route   DELETE /api/products/:id  (soft delete)
-exports.remove = async (req, res) => {
-  try {
-    const product = await Product.findByIdAndUpdate(
-      req.params.id,
-      { isActive: false },
-      { new: true }
-    );
-    if (!product) return res.status(404).json({ msg: 'Product not found' });
-    res.json({ msg: 'Product deactivated', product });
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).json({ msg: 'Server error' });
-  }
-};
-
-// @route   GET /api/products/low-stock
-exports.getLowStock = async (req, res) => {
-  try {
-    // Find all active products with a reorderPoint set
-    const products = await Product.find({ isActive: true, reorderPoint: { $gt: 0 } }).populate('category', 'name');
-
-    const lowStockItems = [];
-    for (const product of products) {
-      const levels = await StockLevel.find({ product: product._id }).populate('warehouse', 'name code');
-      const totalQty = levels.reduce((sum, l) => sum + l.quantity, 0);
-      if (totalQty <= product.reorderPoint) {
-        lowStockItems.push({ product, totalQty, levels });
+    if (initialStock && initialStock > 0) {
+      if (!warehouse) {
+        throw { statusCode: 400, message: 'Warehouse is required to set initial stock' };
       }
+      await applyStockChange({
+        product: product._id,
+        warehouse,
+        location: 'Default',
+        change: initialStock,
+        sourceType: 'adjustment',
+        sourceId: product._id
+      }, session);
     }
 
-    res.json(lowStockItems);
+    await session.commitTransaction();
+    session.endSession();
+
+    return successResponse(res, product, 'Product created successfully', 201);
   } catch (err) {
-    console.error(err.message);
-    res.status(500).json({ msg: 'Server error' });
+    await session.abortTransaction();
+    session.endSession();
+    next(err);
+  }
+};
+
+exports.updateProduct = async (req, res, next) => {
+  try {
+    const product = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    if (!product || !product.isActive) {
+      return errorResponse(res, 'Product not found', [], 404);
+    }
+    return successResponse(res, product, 'Product updated successfully');
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.deleteProduct = async (req, res, next) => {
+  try {
+    const product = await Product.findById(req.params.id);
+    if (!product || !product.isActive) {
+      return errorResponse(res, 'Product not found', [], 404);
+    }
+    product.isActive = false;
+    await product.save();
+    return successResponse(res, {}, 'Product deactivated');
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.getProductStock = async (req, res, next) => {
+  try {
+    const stockLevels = await StockLevel.find({ product: req.params.id })
+      .populate('warehouse', 'name code');
+    return successResponse(res, { stockLevels }, 'Stock levels fetched successfully');
+  } catch (err) {
+    next(err);
   }
 };

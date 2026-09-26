@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const ctrl = require('../controllers/dashboardController');
-const auth = require('../middlewares/authMiddleware');
+const dashboardController = require('../controllers/dashboardController');
+const { protect } = require('../middlewares/authMiddleware');
 
-router.get('/', auth, ctrl.getKPIs);
-router.get('/stock-levels', auth, ctrl.getStockLevels);
-router.get('/ledger', auth, ctrl.getLedger);
+router.use(protect);
+router.get('/kpis', dashboardController.getKPIs);
+router.get('/filters', dashboardController.getFilters);
 
 module.exports = router;
