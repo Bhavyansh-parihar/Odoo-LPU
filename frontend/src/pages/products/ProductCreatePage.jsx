@@ -17,7 +17,7 @@ export const ProductCreatePage = () => {
   const handleSubmit = async (data) => {
     setIsLoading(true);
     try {
-      const newProd = addProduct(data);
+      const newProd = await addProduct(data);
       toast.success('Product Created', `Product "${newProd.name}" (${newProd.sku}) has been created.`);
       navigate(`/products/${newProd.id}`);
     } catch (err) {

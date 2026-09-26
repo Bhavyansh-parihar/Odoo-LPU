@@ -2,47 +2,47 @@ import api, { mockDelay } from './api';
 
 export const operationsService = {
   getReceipts: async () => {
-    await mockDelay(200);
-    // return api.get('/operations/receipts');
+    
+    return api.get('/receipts');
   },
   createReceipt: async (data) => {
-    await mockDelay(350);
-    // return api.post('/operations/receipts', data);
+    
+    return api.post('/receipts', data);
   },
   validateReceipt: async (id) => {
-    await mockDelay(300);
-    // return api.post(`/operations/receipts/${id}/validate`);
+    
+    return api.post(`/receipts/${id}/status`);
   },
   getDeliveries: async () => {
-    await mockDelay(200);
-    // return api.get('/operations/deliveries');
+    
+    return api.get('/delivery-orders');
   },
   createDelivery: async (data) => {
-    await mockDelay(350);
-    // return api.post('/operations/deliveries', data);
+    
+    return api.post('/delivery-orders', data);
   },
   validateDelivery: async (id) => {
-    await mockDelay(300);
-    // return api.post(`/operations/deliveries/${id}/validate`);
+    
+    return api.post(`/delivery-orders/${id}/status`);
   },
   getTransfers: async () => {
-    await mockDelay(200);
-    // return api.get('/operations/transfers');
+    
+    return api.get('/transfers');
   },
   createTransfer: async (data) => {
-    await mockDelay(350);
-    // return api.post('/operations/transfers', data);
+    
+    return api.post('/transfers', data);
   },
   validateTransfer: async (id) => {
-    await mockDelay(300);
-    // return api.post(`/operations/transfers/${id}/validate`);
+    
+    return api.post(`/transfers/${id}/status`);
   },
   getAdjustments: async () => {
-    await mockDelay(200);
-    // return api.get('/operations/adjustments');
+    
+    return api.get('/adjustments');
   },
   applyAdjustment: async (id) => {
-    await mockDelay(300);
-    // return api.post(`/operations/adjustments/${id}/apply`);
+    
+    return api.post(`/adjustments/${id}/status`);
   }
 };

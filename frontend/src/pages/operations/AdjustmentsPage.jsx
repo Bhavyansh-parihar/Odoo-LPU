@@ -48,8 +48,8 @@ export const AdjustmentsPage = () => {
     return true;
   });
 
-  const handleCreateAdjustment = (data) => {
-    const newAdj = addAdjustment(data);
+  const handleCreateAdjustment = async (data) => {
+    const newAdj = await addAdjustment(data);
     toast.success('Adjustment Recorded', `Stock audit adjustment ${newAdj.reference} recorded in Draft state.`);
   };
 

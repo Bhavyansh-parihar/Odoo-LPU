@@ -22,6 +22,10 @@ export const WarehouseSettingsPage = () => {
 
   const activeWarehouse = warehouses.find((w) => w.id === activeWhId) || warehouses[0];
 
+  if (!activeWarehouse) {
+    return <div className="p-8 text-center text-slate-500">Loading warehouse data or no warehouses available...</div>;
+  }
+
   const handleAddLocation = (e) => {
     e.preventDefault();
     if (!newLocCode || !newLocName) return;

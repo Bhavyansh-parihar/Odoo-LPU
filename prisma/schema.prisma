@@ -1,0 +1,192 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(uuid())
+  name         String
+  email        String    @unique
+  passwordHash String
+  role         String    @default("staff")
+  otpCode      String?
+  otpExpiresAt DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  receipts         Receipt[]
+  deliveries       DeliveryOrder[]
+  transfers        InternalTransfer[]
+  stockAdjustments StockAdjustment[]
+}
+
+model Category {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  description String?
+  products    Product[]
+}
+
+model Warehouse {
+  id        String   @id @default(uuid())
+  name      String
+  code      String
+  locations String[]
+
+  products         Product[]
+  receipts         Receipt[]
+  deliveries       DeliveryOrder[]
+  transfersFrom    InternalTransfer[] @relation("TransferFromWarehouse")
+  transfersTo      InternalTransfer[] @relation("TransferToWarehouse")
+  stockLedgers     StockLedger[]
+  stockLevels      StockLevel[]
+  stockAdjustments StockAdjustment[]
+}
+
+model Product {
+  id            String   @id @default(uuid())
+  name          String
+  sku           String   @unique
+  categoryId    String?
+  unitOfMeasure String
+  reorderPoint  Int      @default(0)
+  reorderQty    Int      @default(0)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  category             Category?             @relation(fields: [categoryId], references: [id])
+  receiptLines         ReceiptLine[]
+  deliveryLines        DeliveryOrderLine[]
+  internalTransfers    InternalTransfer[]
+  stockLedgers         StockLedger[]
+  stockLevels          StockLevel[]
+  stockAdjustments     StockAdjustment[]
+  Warehouse            Warehouse?            @relation(fields: [warehouseId], references: [id])
+  warehouseId          String?
+}
+
+model Receipt {
+  id           String    @id @default(uuid())
+  receiptNo    String    @unique
+  supplierName String?
+  warehouseId  String
+  status       String    @default("draft") // 'draft', 'waiting', 'ready', 'done', 'canceled'
+  createdById  String?
+  validatedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  warehouse   Warehouse     @relation(fields: [warehouseId], references: [id])
+  createdBy   User?         @relation(fields: [createdById], references: [id])
+  lines       ReceiptLine[]
+}
+
+model ReceiptLine {
+  id          String @id @default(uuid())
+  receiptId   String
+  productId   String
+  expectedQty Int
+  receivedQty Int    @default(0)
+
+  receipt     Receipt @relation(fields: [receiptId], references: [id])
+  product     Product @relation(fields: [productId], references: [id])
+}
+
+model DeliveryOrder {
+  id           String    @id @default(uuid())
+  deliveryNo   String    @unique
+  customerName String?
+  warehouseId  String
+  status       String    @default("draft") // 'draft', 'waiting', 'ready', 'done', 'canceled'
+  createdById  String?
+  validatedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  warehouse   Warehouse           @relation(fields: [warehouseId], references: [id])
+  createdBy   User?               @relation(fields: [createdById], references: [id])
+  lines       DeliveryOrderLine[]
+}
+
+model DeliveryOrderLine {
+  id             String @id @default(uuid())
+  deliveryOrderId String
+  productId      String
+  orderedQty     Int
+  pickedQty      Int    @default(0)
+
+  deliveryOrder DeliveryOrder @relation(fields: [deliveryOrderId], references: [id])
+  product       Product       @relation(fields: [productId], references: [id])
+}
+
+model InternalTransfer {
+  id              String   @id @default(uuid())
+  transferNo      String   @unique
+  productId       String
+  quantity        Int
+  fromWarehouseId String
+  fromLocation    String?
+  toWarehouseId   String
+  toLocation      String?
+  status          String   @default("draft") // 'draft', 'done', 'canceled'
+  createdById     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  product       Product   @relation(fields: [productId], references: [id])
+  fromWarehouse Warehouse @relation("TransferFromWarehouse", fields: [fromWarehouseId], references: [id])
+  toWarehouse   Warehouse @relation("TransferToWarehouse", fields: [toWarehouseId], references: [id])
+  createdBy     User?     @relation(fields: [createdById], references: [id])
+}
+
+model StockLedger {
+  id           String   @id @default(uuid())
+  productId    String
+  warehouseId  String
+  location     String?
+  change       Int
+  resultingQty Int
+  sourceType   String // 'receipt', 'delivery', 'transfer', 'adjustment'
+  sourceId     String
+  createdAt    DateTime @default(now())
+
+  product   Product   @relation(fields: [productId], references: [id])
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id])
+
+  @@index([productId, createdAt(sort: Desc)])
+}
+
+model StockLevel {
+  id          String @id @default(uuid())
+  productId   String
+  warehouseId String
+  location    String?
+  quantity    Int    @default(0)
+
+  product   Product   @relation(fields: [productId], references: [id])
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id])
+
+  @@unique([productId, warehouseId, location])
+}
+
+model StockAdjustment {
+  id          String   @id @default(uuid())
+  productId   String
+  warehouseId String
+  location    String?
+  systemQty   Int
+  countedQty  Int
+  difference  Int
+  reason      String?
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  product     Product   @relation(fields: [productId], references: [id])
+  warehouse   Warehouse @relation(fields: [warehouseId], references: [id])
+  createdBy   User?     @relation(fields: [createdById], references: [id])
+}

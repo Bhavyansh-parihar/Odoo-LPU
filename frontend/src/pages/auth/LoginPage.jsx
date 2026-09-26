@@ -22,18 +22,22 @@ export const LoginPage = () => {
   } = useForm({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: 'alex.morgan@stocksense.io',
+      email: 'alex@stocksense.io',
       password: 'password123'
     }
   });
 
   const onSubmit = async (data) => {
     try {
-      await login(data.email, data.password);
-      toast.success('Welcome back!', 'Successfully signed in to StockSense ERP.');
-      navigate('/dashboard');
+      const res = await login(data.email, data.password);
+      if (res.success) {
+        toast.success('Welcome back!', 'Successfully signed in to StockSense ERP.');
+        navigate('/dashboard');
+      } else {
+        toast.error('Authentication Failed', res.error || 'Invalid credentials provided.');
+      }
     } catch (err) {
-      toast.error('Authentication Failed', 'Invalid credentials provided.');
+      toast.error('Authentication Failed', 'An unexpected error occurred.');
     }
   };
 

@@ -32,7 +32,7 @@ export const ReceiptDetailPage = () => {
   }
 
   const handleValidate = () => {
-    validateReceipt(receipt.id);
+    validateReceipt(receipt.id, receipt.lines?.map(l => ({ product: l.product?._id || l.product, receivedQty: l.expectedQty })));
     toast.success('Receipt Validated', `Stock inventory successfully incremented for ${receipt.reference}.`);
     setIsConfirmOpen(false);
   };
@@ -56,7 +56,7 @@ export const ReceiptDetailPage = () => {
         <Button variant="outline" size="sm" icon={Printer} onClick={handlePrint} className="print:hidden">
           Print Receipt Slip
         </Button>
-        {receipt.status !== 'Done' && (
+        {receipt.status !== 'done' && receipt.status !== 'Done' && (
           <Button variant="success" size="sm" icon={CheckCircle} onClick={() => setIsConfirmOpen(true)} className="print:hidden">
             Validate Receipt
           </Button>
@@ -116,12 +116,12 @@ export const ReceiptDetailPage = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {receipt.items.map((item, idx) => (
+              {receipt.lines?.map((item, idx) => (
                 <TableRow key={idx}>
-                  <TableCell className="font-semibold text-slate-900">{item.productName}</TableCell>
-                  <TableCell className="font-medium text-slate-700">{item.qtyExpected}</TableCell>
+                  <TableCell className="font-semibold text-slate-900">{item.product?.name || "Unknown Product"}</TableCell>
+                  <TableCell className="font-medium text-slate-700">{item.expectedQty}</TableCell>
                   <TableCell className="font-bold text-indigo-600">
-                    {receipt.status === 'Done' ? item.qtyExpected : item.qtyReceived}
+                    {receipt.status === 'Done' ? item.expectedQty : item.receivedQty}
                   </TableCell>
                   <TableCell>
                     <Badge>{receipt.status === 'Done' ? 'Done' : 'Pending'}</Badge>

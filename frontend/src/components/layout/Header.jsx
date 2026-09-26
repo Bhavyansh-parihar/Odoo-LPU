@@ -65,10 +65,15 @@ export const Header = ({ onToggleSidebar }) => {
         <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
           <Warehouse className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
           <select
-            value={activeWarehouseId}
+            value={activeWarehouseId || ''}
             onChange={(e) => setActiveWarehouseId(e.target.value)}
             className="bg-transparent text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-hidden cursor-pointer max-w-[120px] md:max-w-none truncate"
           >
+            {warehouses.length === 0 && (
+              <option value="" disabled className="dark:bg-slate-800 dark:text-slate-500">
+                Loading...
+              </option>
+            )}
             {warehouses.map((wh) => (
               <option key={wh.id} value={wh.id} className="dark:bg-slate-800 dark:text-white">
                 {wh.code} - {wh.name}

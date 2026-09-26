@@ -9,8 +9,8 @@ router.get('/', productController.getProducts);
 router.get('/:id', productController.getProduct);
 router.get('/:id/stock', productController.getProductStock);
 
-router.post('/', authorize('manager'), productController.createProduct);
-router.put('/:id', authorize('manager'), productController.updateProduct);
+router.post('/', authorize('manager', 'staff'), productController.createProduct);
+router.put('/:id', authorize('manager', 'staff'), productController.updateProduct);
 router.delete('/:id', authorize('manager'), productController.deleteProduct);
 
 module.exports = router;

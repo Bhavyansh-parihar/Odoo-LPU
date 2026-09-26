@@ -6,7 +6,10 @@ import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
 import { Button } from '../ui/Button';
 
+import { useInventoryStore } from "../../store/inventoryStore";
+
 export const ProductForm = ({ initialValues, onSubmit, isLoading = false, submitLabel = 'Save Product' }) => {
+  const categories = useInventoryStore(state => state.categories);
   const {
     register,
     handleSubmit,
@@ -16,7 +19,7 @@ export const ProductForm = ({ initialValues, onSubmit, isLoading = false, submit
     defaultValues: initialValues || {
       name: '',
       sku: '',
-      category: 'Electronics & Components',
+      category: categories?.[0]?.id || '',
       uom: 'pcs',
       initialStock: 0,
       minStock: 10,
@@ -46,11 +49,7 @@ export const ProductForm = ({ initialValues, onSubmit, isLoading = false, submit
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Select label="Product Category *" error={errors.category?.message} {...register('category')}>
-          <option value="Electronics & Components">Electronics & Components</option>
-          <option value="Office Furniture & Supplies">Office Furniture & Supplies</option>
-          <option value="Raw Materials & Hardware">Raw Materials & Hardware</option>
-          <option value="Packaging & Shipping">Packaging & Shipping</option>
-          <option value="Finished Goods">Finished Goods</option>
+          {categories?.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
         </Select>
 
         <Select label="Unit of Measure (UoM) *" error={errors.uom?.message} {...register('uom')}>

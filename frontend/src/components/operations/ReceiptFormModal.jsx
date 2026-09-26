@@ -96,6 +96,7 @@ export const ReceiptFormModal = ({ isOpen, onClose, onSubmit, products = [], loc
                     onChange={(e) => handleItemChange(idx, 'productId', e.target.value)}
                     className="w-full bg-white border border-slate-300 rounded-md py-1.5 px-2 text-xs"
                   >
+                    <option value="" disabled>Select a product...</option>
                     {products.map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.sku} - {p.name}

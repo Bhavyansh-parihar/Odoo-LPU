@@ -20,3 +20,13 @@ api.interceptors.request.use(
 );
 
 export default api;
+
+api.interceptors.response.use(res => res, err => { 
+  if (err.response && err.response.status === 401 && !err.config.url.includes('/auth/login')) { 
+    localStorage.removeItem('stocksense_is_auth');
+    localStorage.removeItem('stocksense_user');
+    localStorage.removeItem('stocksense_auth_token');
+    window.location.href = '/login'; 
+  } 
+  return Promise.reject(err); 
+});

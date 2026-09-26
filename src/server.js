@@ -29,6 +29,7 @@ app.use(`${apiVersion}/adjustments`, require('./routes/adjustmentRoutes'));
 app.use(`${apiVersion}/ledger`, require('./routes/ledgerRoutes'));
 app.use(`${apiVersion}/dashboard`, require('./routes/dashboardRoutes'));
 app.use(`${apiVersion}/profile`, require('./routes/profileRoutes'));
+app.use(`${apiVersion}/users`, require('./routes/userRoutes'));
 
 // Global Error Handler
 app.use(errorHandler);

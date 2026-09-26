@@ -48,8 +48,8 @@ export const ReceiptsPage = () => {
     return true;
   });
 
-  const handleCreateReceipt = (data) => {
-    const newRec = addReceipt(data);
+  const handleCreateReceipt = async (data) => {
+    const newRec = await addReceipt(data);
     toast.success('Receipt Created', `Incoming Receipt ${newRec.reference} recorded in Dispatched state.`);
   };
 
@@ -70,7 +70,7 @@ export const ReceiptsPage = () => {
     switch (status) {
       case 'Dispatched': return 1;
       case 'Arrived': return 2;
-      case 'Done': return 3;
+      case 'Done': case 'done': return 3;
       default: return 1;
     }
   };
@@ -208,7 +208,7 @@ export const ReceiptsPage = () => {
 
                   {/* Line Items */}
                   <div className="space-y-1.5 pt-2 border-t border-slate-100">
-                    {r.items.map((item, idx) => (
+                    {r.lines?.map((item, idx) => (
                       <div key={idx} className="flex items-center justify-between text-xs">
                         <span className="font-medium text-slate-700">{item.productName}</span>
                         <span className="font-bold text-slate-900">{item.qtyExpected} units</span>
@@ -280,7 +280,7 @@ export const ReceiptsPage = () => {
                     <TableCell className="text-slate-500">{r.date}</TableCell>
                     <TableCell className="font-semibold text-slate-900">{r.supplier}</TableCell>
                     <TableCell className="font-mono text-xs text-slate-600">{r.destinationLocation}</TableCell>
-                    <TableCell className="text-slate-700">{r.items.length} line item(s)</TableCell>
+                    <TableCell className="text-slate-700">{(r.lines?.length || 0)} line item(s)</TableCell>
                     <TableCell>
                       <Badge>{r.status}</Badge>
                     </TableCell>
@@ -340,7 +340,7 @@ export const ReceiptsPage = () => {
           onClose={() => setSelectedReceiptToValidate(null)}
           onConfirm={handleConfirmValidate}
           title={`Validate Receipt ${selectedReceiptToValidate.reference}`}
-          description={`Validating will permanently increment stock quantities for ${selectedReceiptToValidate.items.length} items.`}
+          description={`Validating will permanently increment stock quantities for ${(selectedReceiptToValidate.lines?.length || 0)} items.`}
           confirmText="Validate & Receive Stock"
           variant="success"
         />

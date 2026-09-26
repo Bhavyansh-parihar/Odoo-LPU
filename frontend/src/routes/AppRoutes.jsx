@@ -27,6 +27,7 @@ import { AdjustmentsPage } from '../pages/operations/AdjustmentsPage';
 // Move History & Settings & Profile
 import { MoveHistoryPage } from '../pages/move-history/MoveHistoryPage';
 import { WarehouseSettingsPage } from '../pages/settings/WarehouseSettingsPage';
+import { UsersSettingsPage } from '../pages/settings/UsersSettingsPage';
 import { ProfilePage } from '../pages/profile/ProfilePage';
 import { ProfileEditPage } from '../pages/profile/ProfileEditPage';
 
@@ -60,6 +61,7 @@ export const AppRoutes = () => {
         {/* History, Settings & Profile */}
         <Route path="/move-history" element={<MoveHistoryPage />} />
         <Route path="/settings/warehouse" element={<WarehouseSettingsPage />} />
+        <Route path="/settings/users" element={<UsersSettingsPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/profile/edit" element={<ProfileEditPage />} />
       </Route>
